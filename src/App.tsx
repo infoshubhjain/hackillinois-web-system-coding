@@ -22,7 +22,7 @@ import {
 import { dayKey } from "./lib/time";
 
 export default function App() {
-  const { events, status, error, updatedAt, refresh } = useEvents();
+  const { events, status, error, updatedAt, source, refresh } = useEvents();
   const { favorites, toggleFavorite } = useFavorites();
   const now = useNow();
 
@@ -64,6 +64,7 @@ export default function App() {
         liveEvents={liveEvents}
         nextEvent={nextEvent}
         updatedAt={updatedAt}
+        source={source}
         onRefresh={refresh}
         onSelectEvent={setSelectedEvent}
       />

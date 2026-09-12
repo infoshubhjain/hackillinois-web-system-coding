@@ -7,6 +7,8 @@ interface EventsState {
   error: string | null;
   /** When the last successful fetch completed. */
   updatedAt: number | null;
+  /** Whether the data came from the live API or the build-time snapshot. */
+  source: "live" | "snapshot";
 }
 
 /** Quietly re-fetch on an interval so a page left open overnight stays correct. */
@@ -18,6 +20,7 @@ export function useEvents() {
     status: "loading",
     error: null,
     updatedAt: null,
+    source: "live",
   });
 
   const load = useCallback(async (signal?: AbortSignal) => {
@@ -28,9 +31,9 @@ export function useEvents() {
     }));
 
     try {
-      const events = await fetchEvents(signal);
+      const { events, source } = await fetchEvents(signal);
       if (signal?.aborted) return;
-      setState({ events, status: "ready", error: null, updatedAt: Date.now() });
+      setState({ events, source, status: "ready", error: null, updatedAt: Date.now() });
     } catch (error) {
       if (signal?.aborted || (error as Error).name === "AbortError") return;
       setState((prev) => ({

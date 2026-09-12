@@ -71,9 +71,22 @@ function normalize(raw: Partial<HackEvent>): HackEvent {
   };
 }
 
-/** Fetches every public event, sorted chronologically. */
-export async function fetchEvents(signal?: AbortSignal): Promise<HackEvent[]> {
-  const response = await fetch(`${BASE_URL}/event/`, { signal });
+/**
+ * Snapshot of the same payload, committed at build time (see the deploy
+ * workflow). The event service only sends CORS headers to localhost and
+ * hackillinois.org, so a browser on any other host — like the GitHub Pages
+ * demo — cannot call it directly. Falling back to the snapshot keeps the
+ * deployed page useful instead of showing an error nobody can fix.
+ */
+const SNAPSHOT_URL = `${import.meta.env.BASE_URL}events.json`;
+
+export interface EventsResult {
+  events: HackEvent[];
+  source: "live" | "snapshot";
+}
+
+async function readEvents(url: string, signal?: AbortSignal) {
+  const response = await fetch(url, { signal });
 
   if (!response.ok) {
     throw new Error(`Event service responded with ${response.status}`);
@@ -87,4 +100,15 @@ export async function fetchEvents(signal?: AbortSignal): Promise<HackEvent[]> {
   return body.events
     .map(normalize)
     .sort((a, b) => a.startTime - b.startTime || a.name.localeCompare(b.name));
+}
+
+/** Fetches every public event, sorted chronologically. */
+export async function fetchEvents(signal?: AbortSignal): Promise<EventsResult> {
+  try {
+    return { events: await readEvents(`${BASE_URL}/event/`, signal), source: "live" };
+  } catch (error) {
+    if (signal?.aborted) throw error;
+    // Any live failure (CORS, offline, outage) → try the bundled snapshot.
+    return { events: await readEvents(SNAPSHOT_URL, signal), source: "snapshot" };
+  }
 }

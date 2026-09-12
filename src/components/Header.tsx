@@ -6,6 +6,7 @@ interface HeaderProps {
   liveEvents: HackEvent[];
   nextEvent?: HackEvent;
   updatedAt: number | null;
+  source: "live" | "snapshot";
   onRefresh: () => void;
   onSelectEvent: (event: HackEvent) => void;
 }
@@ -19,6 +20,7 @@ export function Header({
   liveEvents,
   nextEvent,
   updatedAt,
+  source,
   onRefresh,
   onSelectEvent,
 }: HeaderProps) {
@@ -82,6 +84,14 @@ export function Header({
           {updatedAt && (
             <span className="hero__updated">
               updated {new Date(updatedAt).toLocaleTimeString()}
+              {source === "snapshot" && (
+                <>
+                  {" · "}
+                  <span title="The event API only allows browser requests from localhost and hackillinois.org, so this deployment reads a snapshot refreshed daily by CI.">
+                    cached snapshot ⓘ
+                  </span>
+                </>
+              )}
             </span>
           )}
         </div>

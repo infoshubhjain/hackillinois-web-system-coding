@@ -5,7 +5,15 @@ and powered by the public [HackIllinois event API](https://adonix.hackillinois.o
 
 Submission for the **HackIllinois 2027 Systems Coding Challenge (Web track)**.
 
+**Live demo:** https://infoshubhjain.github.io/hackillinois-web-system-coding/
+
 ## Quick start
+
+```bash
+./start.sh       # installs deps if needed, starts dev server, opens the browser
+```
+
+or manually:
 
 ```bash
 npm install
@@ -15,6 +23,15 @@ npm run build    # type-check + production build
 ```
 
 No API key or auth needed — the event service endpoint is public.
+
+### A note on the live demo and CORS
+
+`adonix.hackillinois.org` only returns `Access-Control-Allow-Origin` for `localhost`
+and `hackillinois.org`, so a browser on `github.io` is blocked from calling it directly.
+Rather than hide that, the client tries the live API first and falls back to an
+`events.json` snapshot that CI fetches at build time (refreshed daily by a cron
+workflow); the header then labels the data as a *cached snapshot*. **Running locally
+hits the real API live.**
 
 ## What it does
 
