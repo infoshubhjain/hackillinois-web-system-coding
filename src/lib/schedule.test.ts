@@ -7,6 +7,7 @@ import {
   filterEvents,
   findLiveEvents,
   findNextEvent,
+  getDayShape,
   getDays,
   groupByTimeSlot,
 } from "./schedule";
@@ -170,6 +171,37 @@ describe("buildAgenda", () => {
 
   it("returns nothing for an empty day", () => {
     expect(buildAgenda([], FRIDAY_9AM, true)).toEqual([]);
+  });
+});
+
+describe("getDayShape", () => {
+  it("buckets events by hour and spans the whole day, empty hours included", () => {
+    const shape = getDayShape([
+      makeEvent({ eventId: "a" }), // 9am
+      makeEvent({ eventId: "b" }), // 9am
+      makeEvent({
+        eventId: "c",
+        startTime: FRIDAY_9AM + 3 * HOUR,
+        endTime: FRIDAY_9AM + 4 * HOUR,
+      }),
+    ]);
+
+    expect(shape.map((b) => [b.hour, b.count])).toEqual([
+      [9, 2],
+      [10, 0],
+      [11, 0],
+      [12, 1],
+    ]);
+  });
+
+  it("points each populated hour at its first slot, and empty hours at nothing", () => {
+    const shape = getDayShape([
+      makeEvent({ eventId: "late", startTime: FRIDAY_9AM + 1800, endTime: FRIDAY_9AM + 3600 }),
+      makeEvent({ eventId: "early" }),
+    ]);
+
+    expect(shape[0].slotKey).toBe(String(FRIDAY_9AM));
+    expect(getDayShape([]).length).toBe(0);
   });
 });
 

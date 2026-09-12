@@ -10,6 +10,8 @@ interface EventCardProps {
   /** Position in the list, used to stagger the reveal animation. */
   index: number;
   isFavorite: boolean;
+  /** True for the moment right after this event was starred. */
+  justStarred: boolean;
   /** True while this card is morphing into the detail dialog. */
   isMorphing: boolean;
   onToggleFavorite: (eventId: string) => void;
@@ -27,6 +29,7 @@ export function EventCard({
   now,
   index,
   isFavorite,
+  justStarred,
   isMorphing,
   onToggleFavorite,
   onSelect,
@@ -121,14 +124,23 @@ export function EventCard({
           )}
         </p>
 
-        {/* Duration, drawn to scale: length is information, not just text. */}
+        {/* One bar does both jobs: its width is how long the event runs, and
+            its fill is how much of it has already gone. */}
         {minutes > 1 && (
           <span
             className="card__bar"
-            aria-hidden="true"
+            role={status === "live" ? "progressbar" : undefined}
+            aria-label={status === "live" ? "Event progress" : undefined}
+            aria-valuenow={
+              status === "live" ? Math.round(getProgress(event, now) * 100) : undefined
+            }
+            aria-valuemin={status === "live" ? 0 : undefined}
+            aria-valuemax={status === "live" ? 100 : undefined}
+            aria-hidden={status === "live" ? undefined : true}
             style={
               {
                 "--span": Math.min(1, minutes / FULL_BAR_MINUTES),
+                "--progress": status === "live" ? getProgress(event, now) : 0,
               } as React.CSSProperties
             }
           />
@@ -142,23 +154,13 @@ export function EventCard({
           <p className="card__description">{event.description}</p>
         )}
 
-        {status === "live" && (
-          <div
-            className="card__progress"
-            role="progressbar"
-            aria-label="Event progress"
-            aria-valuenow={Math.round(getProgress(event, now) * 100)}
-            aria-valuemin={0}
-            aria-valuemax={100}
-          >
-            <span style={{ width: `${getProgress(event, now) * 100}%` }} />
-          </div>
-        )}
       </button>
 
       <button
         type="button"
-        className={`card__star ${isFavorite ? "is-active" : ""}`}
+        className={`card__star ${isFavorite ? "is-active" : ""} ${
+          justStarred ? "is-burst" : ""
+        }`}
         onClick={() => onToggleFavorite(event.eventId)}
         aria-pressed={isFavorite}
         aria-label={isFavorite ? `Unstar ${event.name}` : `Star ${event.name}`}

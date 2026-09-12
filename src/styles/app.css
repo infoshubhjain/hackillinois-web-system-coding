@@ -449,6 +449,55 @@ kbd {
   color: var(--accent, var(--aqua));
 }
 
+/* ---------- Shape of the day ---------- */
+
+.shape {
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 54px;
+  padding: 0 1px;
+}
+
+.shape__bar {
+  flex: 1;
+  min-width: 0;
+  height: var(--height, 6%);
+  padding: 0;
+  border: none;
+  border-radius: 2px 2px 0 0;
+  background: color-mix(in srgb, var(--aqua) 32%, transparent);
+  cursor: pointer;
+  transition: background 0.3s var(--ease), height 0.5s var(--ease),
+    transform 0.3s var(--ease);
+}
+
+.shape__bar:hover:not(:disabled) {
+  background: var(--aqua);
+  transform: scaleX(1.6);
+}
+
+.shape__bar:disabled {
+  background: rgba(255, 255, 255, 0.09);
+  cursor: default;
+}
+
+/* The hour the reader is actually in. */
+.shape__bar.is-now {
+  background: var(--coral);
+  box-shadow: 0 0 12px -2px var(--coral);
+}
+
+.shape__axis {
+  display: flex;
+  justify-content: space-between;
+  margin: 0.4rem 0 0;
+  font-size: 0.66rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+
 .rail__summary {
   display: flex;
   align-items: center;
@@ -476,11 +525,30 @@ kbd {
    ========================================================================= */
 
 .timeline {
+  position: relative;
   list-style: none;
   margin: 0;
   padding: 0;
   display: grid;
   gap: 1.75rem;
+}
+
+/* One continuous line down the column. Drawn once here rather than per slot,
+   so it runs *through* the break rows instead of snapping at every gap. */
+.timeline::before {
+  content: "";
+  position: absolute;
+  left: 104px;
+  top: 1.6rem;
+  bottom: 1rem;
+  width: 1px;
+  background: linear-gradient(
+    180deg,
+    transparent,
+    rgba(126, 240, 255, 0.4) 6%,
+    rgba(126, 240, 255, 0.16) 65%,
+    transparent
+  );
 }
 
 .slot {
@@ -508,27 +576,13 @@ kbd {
 
 .slot__node {
   position: absolute;
-  right: calc(-0.4rem - 4px);
+  right: -4px;
   top: 1.45rem;
   width: 9px;
   height: 9px;
   border-radius: 50%;
   background: var(--aqua);
   box-shadow: 0 0 16px rgba(126, 240, 255, 0.85);
-}
-
-.slot__time::after {
-  content: "";
-  position: absolute;
-  right: -0.4rem;
-  top: 2.35rem;
-  bottom: -2.4rem;
-  width: 1px;
-  background: linear-gradient(180deg, rgba(126, 240, 255, 0.45), transparent);
-}
-
-.slot:last-child .slot__time::after {
-  display: none;
 }
 
 .slot__events {
@@ -553,9 +607,9 @@ kbd {
   z-index: 1;
   grid-column: 1;
   justify-self: end;
-  width: 1px;
+  width: 3px;
   height: 34px;
-  margin-right: -0.4rem;
+  margin-right: -1px;
   background: repeating-linear-gradient(
     180deg,
     rgba(168, 202, 221, 0.5) 0 3px,
@@ -784,23 +838,25 @@ kbd {
 
 /* Duration drawn to scale: length is information, not just a label. */
 .card__bar {
+  position: relative;
   display: block;
-  width: 100%;
-  max-width: 190px;
-  height: 2px;
-  opacity: 0.75;
-  margin-top: 0.7rem;
-  border-radius: 2px;
-  background: rgba(255, 255, 255, 0.08);
+  width: calc(var(--span, 0.3) * 240px);
+  height: 3px;
+  margin-top: 0.75rem;
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--accent, var(--teal)) 28%, transparent);
 }
 
+/* Elapsed portion — zero-width unless the event is running. */
 .card__bar::after {
   content: "";
-  display: block;
-  height: 100%;
-  width: calc(var(--span, 0.3) * 100%);
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: calc(var(--progress, 0) * 100%);
   border-radius: inherit;
-  background: color-mix(in srgb, var(--accent, var(--teal)) 70%, transparent);
+  background: linear-gradient(90deg, var(--coral), var(--sand));
+  box-shadow: 0 0 14px -2px var(--coral);
+  transition: width 1s linear;
 }
 
 .card__sponsor {
@@ -820,23 +876,6 @@ kbd {
   line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
-}
-
-.card__progress {
-  margin-top: 0.9rem;
-  height: 3px;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.1);
-  overflow: hidden;
-}
-
-.card__progress span {
-  display: block;
-  height: 100%;
-  border-radius: inherit;
-  background: linear-gradient(90deg, var(--coral), var(--sand));
-  box-shadow: 0 0 14px rgba(255, 143, 107, 0.75);
-  transition: width 1s linear;
 }
 
 .card__star {
@@ -867,6 +906,34 @@ kbd {
   border-color: rgba(255, 210, 138, 0.6);
   background: rgba(255, 210, 138, 0.14);
   box-shadow: 0 0 22px -6px rgba(255, 210, 138, 0.9);
+}
+
+.card__star.is-burst {
+  animation: starPop 0.45s var(--ease);
+}
+
+/* A ring that leaves the button at the moment an event is added. */
+.card__star.is-burst::after {
+  content: "";
+  position: absolute;
+  inset: -2px;
+  border-radius: 50%;
+  border: 1.5px solid var(--sand);
+  animation: starBurst 0.55s var(--ease) forwards;
+  pointer-events: none;
+}
+
+@keyframes starPop {
+  40% {
+    transform: scale(1.28);
+  }
+}
+
+@keyframes starBurst {
+  to {
+    transform: scale(2.1);
+    opacity: 0;
+  }
 }
 
 /* =========================================================================
@@ -1194,6 +1261,30 @@ kbd {
   animation-timing-function: var(--ease);
 }
 
+/* Day switch: cross-dissolve the page. Scoped to `data-transition="day"` so the
+   card→dialog morph leaves the rest of the page perfectly still. */
+html[data-transition="day"]::view-transition-old(root) {
+  animation: dayOut 0.22s var(--ease) both;
+}
+
+html[data-transition="day"]::view-transition-new(root) {
+  animation: dayIn 0.36s var(--ease) both;
+}
+
+@keyframes dayOut {
+  to {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+}
+
+@keyframes dayIn {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+}
+
 /* =========================================================================
    Responsive
    ========================================================================= */
@@ -1204,17 +1295,15 @@ kbd {
     gap: 1.75rem;
   }
 
-  /* The rail becomes a compact panel above the schedule. */
+  /* The rail becomes a panel above the schedule — and deliberately not a sticky
+     one: at this width the full control set is taller than the viewport, so
+     pinning it would leave no room for the schedule it controls. */
   .rail {
-    position: sticky;
-    top: 0;
-    z-index: 10;
+    position: static;
     grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
     gap: 1rem 1.5rem;
     margin: 0 -1rem;
-    padding: 1rem;
-    background: linear-gradient(180deg, rgba(2, 16, 28, 0.92), rgba(2, 16, 28, 0.6));
-    backdrop-filter: blur(18px) saturate(1.4);
+    padding: 1rem 1rem 1.5rem;
     border-bottom: 1px solid var(--line);
   }
 
@@ -1253,7 +1342,56 @@ kbd {
     grid-column: 1 / -1;
   }
 
-  .rail__summary {
+  /* ---------- Shape of the day ---------- */
+
+.shape {
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 54px;
+  padding: 0 1px;
+}
+
+.shape__bar {
+  flex: 1;
+  min-width: 0;
+  height: var(--height, 6%);
+  padding: 0;
+  border: none;
+  border-radius: 2px 2px 0 0;
+  background: color-mix(in srgb, var(--aqua) 32%, transparent);
+  cursor: pointer;
+  transition: background 0.3s var(--ease), height 0.5s var(--ease),
+    transform 0.3s var(--ease);
+}
+
+.shape__bar:hover:not(:disabled) {
+  background: var(--aqua);
+  transform: scaleX(1.6);
+}
+
+.shape__bar:disabled {
+  background: rgba(255, 255, 255, 0.09);
+  cursor: default;
+}
+
+/* The hour the reader is actually in. */
+.shape__bar.is-now {
+  background: var(--coral);
+  box-shadow: 0 0 12px -2px var(--coral);
+}
+
+.shape__axis {
+  display: flex;
+  justify-content: space-between;
+  margin: 0.4rem 0 0;
+  font-size: 0.66rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+.rail__summary {
     grid-column: 1 / -1;
     padding-top: 0.5rem;
   }
@@ -1275,8 +1413,9 @@ kbd {
     padding-top: 0;
   }
 
+  /* No room for a gutter rail at this width. */
   .slot__node,
-  .slot__time::after,
+  .timeline::before,
   .gap__rule {
     display: none;
   }

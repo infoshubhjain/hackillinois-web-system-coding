@@ -1,7 +1,8 @@
 import { forwardRef } from "react";
 import { EVENT_TYPES, type EventType } from "../api/events";
 import { EVENT_TYPE_META } from "../lib/eventMeta";
-import type { ScheduleDay, ScheduleFilters } from "../lib/schedule";
+import type { HourBucket, ScheduleDay, ScheduleFilters } from "../lib/schedule";
+import { DayShape } from "./DayShape";
 import { Icon } from "./Icon";
 
 interface RailProps {
@@ -16,6 +17,9 @@ interface RailProps {
   /** Events shown on the active day, and across the whole weekend. */
   dayCount: number;
   totalCount: number;
+  shape: HourBucket[];
+  currentHour: number | null;
+  onJumpToHour: (slotKey: string) => void;
 }
 
 /**
@@ -37,6 +41,9 @@ export const Rail = forwardRef<HTMLInputElement, RailProps>(function Rail(
     proCount,
     dayCount,
     totalCount,
+    shape,
+    currentHour,
+    onJumpToHour,
   },
   searchRef
 ) {
@@ -88,6 +95,8 @@ export const Rail = forwardRef<HTMLInputElement, RailProps>(function Rail(
           ))}
         </div>
       </section>
+
+      <DayShape buckets={shape} currentHour={currentHour} onJump={onJumpToHour} />
 
       <section className="rail__group">
         <h2 className="rail__heading">Type</h2>

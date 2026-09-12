@@ -16,6 +16,7 @@ import { useShortcuts } from "./hooks/useShortcuts";
 import {
   buildAgenda,
   countByType,
+  getDayShape,
   EMPTY_FILTERS,
   filterEvents,
   findLiveEvents,
@@ -23,11 +24,12 @@ import {
   getDays,
   type ScheduleFilters,
 } from "./lib/schedule";
-import { dayKey, formatDuration, formatTime } from "./lib/time";
+import { dayKey, formatDuration, formatTime, getHour } from "./lib/time";
+import { withViewTransition } from "./lib/viewTransition";
 
 export default function App() {
   const { events, status, error, updatedAt, source, refresh } = useEvents();
-  const { favorites, toggleFavorite } = useFavorites();
+  const { favorites, toggleFavorite, justStarred } = useFavorites();
   const { selectedEvent, morphId, open, close } = useEventDialog();
   const now = useNow();
   useAmbient();
@@ -35,6 +37,21 @@ export default function App() {
   const [filters, setFilters] = useState<ScheduleFilters>(EMPTY_FILTERS);
   const [activeDay, setActiveDay] = useState<string>("");
   const searchRef = useRef<HTMLInputElement>(null);
+
+  /**
+   * Switching days replaces the entire timeline, so it gets a cross-dissolve
+   * instead of a hard cut — it's the most-used control on the page.
+   */
+  const selectDay = useCallback(
+    (key: string) => withViewTransition(() => setActiveDay(key), "day"),
+    []
+  );
+
+  const jumpToHour = useCallback((slotKey: string) => {
+    document
+      .getElementById(`slot-${slotKey}`)
+      ?.scrollIntoView({ block: "center", behavior: "smooth" });
+  }, []);
 
   const days = useMemo(() => getDays(events), [events]);
 
@@ -66,6 +83,13 @@ export default function App() {
     [events, activeDay, filters, favorites]
   );
 
+  // The strip in the rail is drawn from the day's real schedule, not the
+  // filtered view: it's an overview of the day, not of the current query.
+  const shape = useMemo(
+    () => getDayShape(events.filter((e) => dayKey(e.startTime) === activeDay)),
+    [events, activeDay]
+  );
+
   const proCount = useMemo(
     () => events.filter((event) => event.isPro).length,
     [events]
@@ -92,9 +116,9 @@ export default function App() {
     (direction: -1 | 1) => {
       const index = days.findIndex((day) => day.key === activeDay);
       const next = days[index + direction];
-      if (next) setActiveDay(next.key);
+      if (next) selectDay(next.key);
     },
-    [days, activeDay]
+    [days, activeDay, selectDay]
   );
 
   useShortcuts({
@@ -135,7 +159,7 @@ export default function App() {
               ref={searchRef}
               days={days}
               activeDay={activeDay}
-              onSelectDay={setActiveDay}
+              onSelectDay={selectDay}
               filters={filters}
               onChangeFilters={setFilters}
               typeCounts={typeCounts}
@@ -143,6 +167,9 @@ export default function App() {
               proCount={proCount}
               dayCount={dayEvents.length}
               totalCount={visibleEvents.length}
+              shape={shape}
+              currentHour={activeDay === dayKey(now) ? getHour(now) : null}
+              onJumpToHour={jumpToHour}
             />
 
             <section className="schedule" aria-label="Events">
@@ -174,7 +201,7 @@ export default function App() {
                     }
 
                     return (
-                      <li key={row.key} className="slot">
+                      <li key={row.key} className="slot" id={`slot-${row.key}`}>
                         <div className="slot__time" data-reveal>
                           <span className="slot__node" aria-hidden="true" />
                           <span className="slot__label">{row.label}</span>
@@ -187,6 +214,7 @@ export default function App() {
                               index={index}
                               now={now}
                               isFavorite={favorites.has(event.eventId)}
+                              justStarred={justStarred === event.eventId}
                               isMorphing={morphId === event.eventId && !selectedEvent}
                               onToggleFavorite={toggleFavorite}
                               onSelect={open}

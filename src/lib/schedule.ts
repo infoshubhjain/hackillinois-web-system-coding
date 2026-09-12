@@ -1,5 +1,5 @@
 import type { EventType, HackEvent } from "../api/events";
-import { dayKey, formatDayDate, formatDayName, formatTime } from "./time";
+import { dayKey, formatDayDate, formatDayName, formatTime, getHour } from "./time";
 
 export interface ScheduleFilters {
   query: string;
@@ -153,6 +153,43 @@ export function buildAgenda(
   }
 
   return rows;
+}
+
+/** One hour of a day, for the density strip in the rail. */
+export interface HourBucket {
+  hour: number;
+  count: number;
+  /** Start-time key of the first slot in this hour, for jump-to navigation. */
+  slotKey: string | null;
+}
+
+/**
+ * The shape of a day: how many events start in each hour, from the first event
+ * to the last. Lets the rail answer "when is this day busy?" without scrolling
+ * the whole timeline, and doubles as a jump target.
+ */
+export function getDayShape(events: HackEvent[]): HourBucket[] {
+  if (!events.length) return [];
+
+  const hourOf = (event: HackEvent) => getHour(event.startTime);
+  const hours = events.map(hourOf);
+  const first = Math.min(...hours);
+  const last = Math.max(...hours);
+
+  const buckets: HourBucket[] = [];
+  for (let hour = first; hour <= last; hour++) {
+    const inHour = events
+      .filter((event) => hourOf(event) === hour)
+      .sort((a, b) => a.startTime - b.startTime);
+
+    buckets.push({
+      hour,
+      count: inHour.length,
+      slotKey: inHour.length ? String(inHour[0].startTime) : null,
+    });
+  }
+
+  return buckets;
 }
 
 /**

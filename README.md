@@ -40,9 +40,10 @@ hits the real API live.**
 | **Editorial control rail** | Search, days and type filters live in one persistent sidebar. Every filter shows a live count of exactly what clicking it returns, and a filter that would return nothing is disabled rather than silently emptying the page. |
 | **Timeline with real gaps** | Events are grouped by start time, and the empty stretches between them are drawn as explicit "3h break" rows. A list that hides its gaps makes a 10-minute turnaround and an overnight break look identical. |
 | **"You are here" marker** | When the active day is today, a live marker is inserted at the reader's exact position in the schedule — and never on a day they aren't in. |
-| **Duration to scale** | Each card draws a bar proportional to its length, so a 30-minute talk and a 3-hour expo are distinguishable before you read a word. Zero-length deadlines get no bar and no "0m". |
+| **Duration to scale** | One bar per card does both jobs: its width is the event's length, its fill is how much has elapsed. A 30-minute talk and a 3-hour expo are distinguishable before you read a word; zero-length deadlines get no bar and no "0m". |
+| **Shape of the day** | A density strip in the rail — one bar per hour, height by event count, the current hour marked. Answers "when is this day busy?" without scrolling the timeline, and every populated hour is a button that jumps there. |
 | **Happening now / up next** | The question people actually open a schedule to answer, updated every 30s and always reflecting the real schedule rather than the active filters. |
-| **Card → dialog morph** | Clicking a card runs a View Transition: the card's own pixels expand into the detail dialog. Browsers without the API get a CSS entrance instead. |
+| **Card → dialog morph** | Clicking a card runs a View Transition: the card's own pixels expand into the detail dialog. Switching days cross-dissolves the timeline through the same mechanism, scoped so the two never interfere. Browsers without the API get a CSS entrance instead. |
 | **Keyboard layer** | `/` focuses search, `←`/`→` change day, `Esc` resets — ignored while typing in a field. |
 | **★ My schedule** | Starred events persist in `localStorage`, giving a personal agenda with no login (auth was out of scope). |
 | **Detail dialog** | Full description, clickable map coordinates, the official floor-map image, meal menus, sponsor, and an *Add to Google Calendar* link. |
@@ -66,8 +67,9 @@ src/
     schedule.ts          days, filtering, slots, gaps, now-marker, counts (pure)
     time.ts              Central-Time formatting, status, countdowns (pure)
     eventMeta.ts         per-type label + icon
-  components/            Header, Rail, EventCard, EventDetail, Icon,
-                         Feedback, OceanBackground
+    viewTransition.ts    one guarded View Transition helper for both flows
+  components/            Header, Rail, DayShape, EventCard, EventDetail,
+                         Icon, Feedback, OceanBackground
   styles/                theme.css (tokens + ocean backdrop), app.css
   App.tsx                composes state → derived data → UI
 ```
@@ -98,6 +100,9 @@ the entire visual system is ~6 kB gzipped of CSS.
   glare plus 3° tilt written as CSS variables on pointer move — never through React state.
 - **One easing curve** (`--ease`) and one reveal animation across the page, so the motion
   reads as authored rather than assembled.
+- **Starring is a moment**: a ring bursts off the button when an event is added, and
+  only then — the burst is tied to a transient id, so it never replays when a starred
+  card re-mounts on a filter change.
 - Under `prefers-reduced-motion` the grain and particles are removed, transitions are
   cut, the view transition is skipped, and revealed content is forced visible.
 
@@ -122,9 +127,9 @@ the entire visual system is ~6 kB gzipped of CSS.
 npm test
 ```
 
-21 tests covering day bucketing (including the late-night timezone edge case), filter
+23 tests covering day bucketing (including the late-night timezone edge case), filter
 combination logic, time-slot grouping, break-row thresholds, the now-marker's
-"only if the reader is actually in this day" rule, filter counts, live/upcoming
+"only if the reader is actually in this day" rule, hour-density bucketing, filter counts, live/upcoming
 classification, duration + countdown formatting, and the API client's sorting,
 normalization, fallback and error paths.
 

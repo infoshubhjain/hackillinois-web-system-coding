@@ -19,6 +19,8 @@ function readStored(): string[] {
  */
 export function useFavorites() {
   const [ids, setIds] = useState<Set<string>>(() => new Set(readStored()));
+  /** Id of the event starred in the last moment, so only it plays the burst. */
+  const [justStarred, setJustStarred] = useState<string | null>(null);
 
   useEffect(() => {
     try {
@@ -32,9 +34,19 @@ export function useFavorites() {
     setIds((prev) => {
       const next = new Set(prev);
       next.has(eventId) ? next.delete(eventId) : next.add(eventId);
+      // Celebrate adding, not removing.
+      setJustStarred(next.has(eventId) ? eventId : null);
       return next;
     });
   }, []);
 
-  return { favorites: ids, toggleFavorite: toggle };
+  // Without this the burst would replay on every re-mount — starring is a
+  // moment, not a permanent state of the button.
+  useEffect(() => {
+    if (!justStarred) return;
+    const timer = setTimeout(() => setJustStarred(null), 600);
+    return () => clearTimeout(timer);
+  }, [justStarred]);
+
+  return { favorites: ids, toggleFavorite: toggle, justStarred };
 }

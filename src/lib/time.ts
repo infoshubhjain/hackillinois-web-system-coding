@@ -20,6 +20,13 @@ const dateFormat = new Intl.DateTimeFormat("en-US", {
   timeZone: TIME_ZONE,
 });
 
+/** `h23` so midnight is hour 0, not 24 — some locales format it either way. */
+const hourFormat = new Intl.DateTimeFormat("en-US", {
+  hour: "numeric",
+  hourCycle: "h23",
+  timeZone: TIME_ZONE,
+});
+
 /** `en-CA` gives a sortable `YYYY-MM-DD` key in the target time zone. */
 const dayKeyFormat = new Intl.DateTimeFormat("en-CA", { timeZone: TIME_ZONE });
 
@@ -39,6 +46,17 @@ export const formatDayName = (unixSeconds: number) =>
 
 export const formatDayDate = (unixSeconds: number) =>
   dateFormat.format(toDate(unixSeconds));
+
+/** Hour of the day (0–23) in Central, for the day-shape strip. */
+export const getHour = (unixSeconds: number) =>
+  Number(hourFormat.format(toDate(unixSeconds)));
+
+/** "2p", "12a" — compact enough to label a 10px-wide bar. */
+export function formatHourShort(hour: number) {
+  const suffix = hour < 12 ? "a" : "p";
+  const display = hour % 12 === 0 ? 12 : hour % 12;
+  return `${display}${suffix}`;
+}
 
 export function formatDuration(start: number, end: number) {
   const minutes = Math.max(0, Math.round((end - start) / 60));
