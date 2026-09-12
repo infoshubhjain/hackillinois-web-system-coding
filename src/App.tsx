@@ -7,9 +7,11 @@ import { EventDetail } from "./components/EventDetail";
 import { FilterBar } from "./components/FilterBar";
 import { Header } from "./components/Header";
 import { OceanBackground } from "./components/OceanBackground";
+import { useAmbient } from "./hooks/useAmbient";
 import { useEvents } from "./hooks/useEvents";
 import { useFavorites } from "./hooks/useFavorites";
 import { useNow } from "./hooks/useNow";
+import { useReveal } from "./hooks/useReveal";
 import {
   EMPTY_FILTERS,
   filterEvents,
@@ -25,6 +27,7 @@ export default function App() {
   const { events, status, error, updatedAt, source, refresh } = useEvents();
   const { favorites, toggleFavorite } = useFavorites();
   const now = useNow();
+  useAmbient();
 
   const [filters, setFilters] = useState<ScheduleFilters>(EMPTY_FILTERS);
   const [activeDay, setActiveDay] = useState<string>("");
@@ -51,6 +54,9 @@ export default function App() {
 
   const slots = useMemo(() => groupByTimeSlot(dayEvents), [dayEvents]);
 
+  // Re-arm the scroll-reveal animation whenever the visible list changes.
+  useReveal([slots, status]);
+
   // The banner always reflects the real schedule, never the current filters.
   const liveEvents = useMemo(() => findLiveEvents(events, now), [events, now]);
   const nextEvent = useMemo(() => findNextEvent(events, now), [events, now]);
@@ -63,27 +69,30 @@ export default function App() {
         now={now}
         liveEvents={liveEvents}
         nextEvent={nextEvent}
+        totalEvents={events.length}
+        dayCount={days.length}
         updatedAt={updatedAt}
         source={source}
         onRefresh={refresh}
         onSelectEvent={setSelectedEvent}
       />
 
-      <main className="content">
+      <main className="content" id="schedule">
         {status === "loading" && <ScheduleSkeleton />}
 
         {status === "error" && <ErrorState message={error ?? "Unknown error"} onRetry={refresh} />}
 
         {status === "ready" && (
           <>
-            <DayTabs days={days} activeKey={activeDay} onSelect={setActiveDay} />
-
-            <FilterBar
-              filters={filters}
-              onChange={setFilters}
-              favoriteCount={favorites.size}
-              resultCount={visibleEvents.length}
-            />
+            <div className="controls">
+              <DayTabs days={days} activeKey={activeDay} onSelect={setActiveDay} />
+              <FilterBar
+                filters={filters}
+                onChange={setFilters}
+                favoriteCount={favorites.size}
+                resultCount={visibleEvents.length}
+              />
+            </div>
 
             {slots.length === 0 ? (
               <EmptyState message="No events match your filters on this day. Try clearing a filter or checking another day." />
@@ -91,14 +100,16 @@ export default function App() {
               <ol className="timeline">
                 {slots.map((slot) => (
                   <li key={slot.key} className="timeline__slot">
-                    <div className="timeline__time">
-                      <span>{slot.label}</span>
+                    <div className="timeline__time" data-reveal>
+                      <span className="timeline__node" aria-hidden="true" />
+                      <span className="timeline__label">{slot.label}</span>
                     </div>
                     <div className="timeline__events">
-                      {slot.events.map((event) => (
+                      {slot.events.map((event, eventIndex) => (
                         <EventCard
                           key={event.eventId}
                           event={event}
+                          index={eventIndex}
                           now={now}
                           isFavorite={favorites.has(event.eventId)}
                           onToggleFavorite={toggleFavorite}

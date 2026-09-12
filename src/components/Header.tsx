@@ -5,20 +5,28 @@ interface HeaderProps {
   now: number;
   liveEvents: HackEvent[];
   nextEvent?: HackEvent;
+  totalEvents: number;
+  dayCount: number;
   updatedAt: number | null;
   source: "live" | "snapshot";
   onRefresh: () => void;
   onSelectEvent: (event: HackEvent) => void;
 }
 
+/** Headline words animate in one at a time, each from behind its own mask. */
+const TITLE = ["Dive", "into", "the"];
+
 /**
- * Hero banner. The "right now / up next" strip answers the question a hacker
- * actually has when they open the schedule, without scrolling.
+ * Cinematic hero. Full-viewport framing, kinetic headline, a live "right now /
+ * up next" strip, and a scroll cue — the whole thing parallaxes and fades as
+ * the reader descends (driven by the `--scroll` variable from `useAmbient`).
  */
 export function Header({
   now,
   liveEvents,
   nextEvent,
+  totalEvents,
+  dayCount,
   updatedAt,
   source,
   onRefresh,
@@ -27,23 +35,39 @@ export function Header({
   return (
     <header className="hero">
       <div className="hero__inner">
-        <p className="hero__eyebrow">HackIllinois 2026</p>
+        <p className="label hero__eyebrow">
+          <span className="hero__rule" aria-hidden="true" />
+          HackIllinois 2026 · Schedule
+        </p>
+
         <h1 className="hero__title">
-          Dive into the <span>Schedule</span>
+          {TITLE.map((word, index) => (
+            <span className="hero__word" key={word}>
+              <span style={{ animationDelay: `${0.15 + index * 0.09}s` }}>
+                {word}
+              </span>
+            </span>
+          ))}
+          <span className="hero__word hero__word--accent">
+            <span style={{ animationDelay: `${0.15 + TITLE.length * 0.09}s` }}>
+              Schedule
+            </span>
+          </span>
         </h1>
+
         <p className="hero__subtitle">
-          Every talk, workshop, meal and mini-event — charted from the depths of
-          the HackIllinois API. All times shown in Central Time.
+          {totalEvents} events across {dayCount} days — talks, workshops, meals and
+          mini-events, charted live from the HackIllinois API. All times Central.
         </p>
 
         <div className="hero__status">
-          {liveEvents.length > 0 ? (
+          {liveEvents.length > 0 && (
             <button
               type="button"
               className="nowcard nowcard--live"
               onClick={() => onSelectEvent(liveEvents[0])}
             >
-              <span className="nowcard__label">
+              <span className="label nowcard__label">
                 <span className="pulse" aria-hidden="true" /> Happening now
               </span>
               <span className="nowcard__name">{liveEvents[0].name}</span>
@@ -52,34 +76,34 @@ export function Header({
                 {liveEvents.length > 1 && ` · +${liveEvents.length - 1} more`}
               </span>
             </button>
-          ) : null}
+          )}
 
-          {nextEvent ? (
+          {nextEvent && (
             <button
               type="button"
               className="nowcard"
               onClick={() => onSelectEvent(nextEvent)}
             >
-              <span className="nowcard__label">Up next</span>
+              <span className="label nowcard__label">Up next</span>
               <span className="nowcard__name">{nextEvent.name}</span>
               <span className="nowcard__time">
                 {formatTime(nextEvent.startTime)} ·{" "}
                 {formatCountdown(nextEvent.startTime, now)}
               </span>
             </button>
-          ) : null}
+          )}
 
-          {/* Nothing live and nothing left: the event is over (or not announced). */}
+          {/* Nothing live and nothing left: the event is over (or unannounced). */}
           {liveEvents.length === 0 && !nextEvent && (
             <p className="hero__resting">
-              🐚 No sessions in progress — you&apos;re browsing the full archive.
+              No sessions in progress — you&apos;re browsing the full archive.
             </p>
           )}
         </div>
 
-        <div className="hero__refresh">
+        <div className="hero__meta">
           <button type="button" className="linkbutton" onClick={onRefresh}>
-            ⟳ Refresh
+            <span aria-hidden="true">⟳</span> Refresh
           </button>
           {updatedAt && (
             <span className="hero__updated">
@@ -95,11 +119,28 @@ export function Header({
             </span>
           )}
         </div>
+
+        <a className="hero__cue" href="#schedule">
+          <span className="label">Descend</span>
+          <span className="hero__cue-line" aria-hidden="true" />
+        </a>
       </div>
 
-      {/* Decorative wave that separates the hero from the schedule below. */}
-      <svg className="hero__wave" viewBox="0 0 1440 120" preserveAspectRatio="none" aria-hidden="true">
-        <path d="M0,64 C240,120 480,0 720,40 C960,80 1200,120 1440,64 L1440,120 L0,120 Z" />
+      {/* Surface line separating the hero from the schedule below. */}
+      <svg
+        className="hero__wave"
+        viewBox="0 0 1440 140"
+        preserveAspectRatio="none"
+        aria-hidden="true"
+      >
+        <path
+          className="hero__wave-back"
+          d="M0,70 C260,130 460,10 720,46 C980,82 1180,132 1440,68 L1440,140 L0,140 Z"
+        />
+        <path
+          className="hero__wave-front"
+          d="M0,96 C300,140 520,50 780,80 C1020,108 1220,140 1440,96 L1440,140 L0,140 Z"
+        />
       </svg>
     </header>
   );

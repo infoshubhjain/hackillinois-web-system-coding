@@ -67,6 +67,31 @@ src/
   App.tsx                composes state → derived data → UI
 ```
 
+## The look
+
+The page is styled as a descent, not a list. Everything below is CSS + inline SVG
+noise — no WebGL, no animation library, no image assets, ~5 kB gzipped of styles.
+
+- **Layered scene** (`OceanBackground`): water-column gradient, cursor-tracked dive
+  light, soft-light **caustics** from an SVG `feTurbulence` texture, screen-blended
+  **god rays**, a two-tier particle field (crisp near bubbles, blurred far marine snow —
+  depth of field on the cheap), **vignette**, and an animated **film grain** overlay.
+- **Scroll-driven grade**: `useAmbient` writes `--scroll` and `--pointer-x/y` to the
+  root inside a `requestAnimationFrame`, so the water darkens with depth and the hero
+  parallaxes/fades — all in CSS, zero React re-renders per frame.
+- **Kinetic headline**: each word rises out of its own overflow mask on a staggered
+  delay; the accent word is an italic gradient with a light-through-water glow.
+- **Reveal on scroll**: one shared `IntersectionObserver` (`useReveal`) fades, lifts
+  and un-blurs cards with a per-index stagger, then unobserves them.
+- **Cards as glass**: backdrop blur, a type-coloured accent rail and glow, plus a
+  cursor-tracked glare and a 3.5° tilt written as CSS variables on pointer move.
+- **Typography**: Instrument Serif for display, Inter for UI; tabular numerals on every
+  time so the timeline column doesn't shimmer as it updates.
+- **One easing curve** (`--ease`) and one reveal animation across the whole page, so the
+  motion feels authored rather than assembled.
+- All of it collapses gracefully under `prefers-reduced-motion` — grain and particles are
+  removed, and revealed content is forced visible so nothing can get stuck hidden.
+
 ### Design notes
 
 - **All schedule logic is pure and lives in `lib/`.** Components only render, which is
