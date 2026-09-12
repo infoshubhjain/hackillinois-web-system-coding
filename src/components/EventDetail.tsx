@@ -7,6 +7,7 @@ import {
   formatTimeRange,
   toDate,
 } from "../lib/time";
+import { Icon } from "./Icon";
 
 interface EventDetailProps {
   event: HackEvent;
@@ -37,6 +38,7 @@ export function EventDetail({
   onClose,
 }: EventDetailProps) {
   const closeButtonRef = useRef<HTMLButtonElement>(null);
+  const meta = EVENT_TYPE_META[event.eventType];
 
   // Escape closes, focus starts inside the dialog, background stops scrolling.
   useEffect(() => {
@@ -51,12 +53,10 @@ export function EventDetail({
     };
   }, [onClose]);
 
-  const meta = EVENT_TYPE_META[event.eventType];
-
   return (
     <div className="modal" onClick={onClose}>
       <div
-        className="modal__panel"
+        className={`modal__panel modal__panel--${event.eventType.toLowerCase()}`}
         role="dialog"
         aria-modal="true"
         aria-labelledby="event-detail-title"
@@ -69,22 +69,32 @@ export function EventDetail({
           ref={closeButtonRef}
           aria-label="Close event details"
         >
-          ✕
+          <Icon name="close" size={16} />
         </button>
 
-        <span className="chip chip--type">
-          <span aria-hidden="true">{meta.emoji}</span> {meta.label}
-        </span>
+        <div className="modal__tags">
+          <span className="tag">
+            <Icon name={meta.icon} size={13} />
+            {meta.label}
+          </span>
+          {event.isPro && <span className="tag tag--pro">Pro</span>}
+          {event.isMandatory && <span className="tag tag--required">Required</span>}
+        </div>
 
         <h2 id="event-detail-title" className="modal__title">
           {event.name}
         </h2>
 
         <p className="modal__when">
+          <Icon name="clock" size={14} />
           {formatDayName(event.startTime)},{" "}
           {formatTimeRange(event.startTime, event.endTime)} ·{" "}
-          {formatDuration(event.startTime, event.endTime)} · CST
+          {formatDuration(event.startTime, event.endTime)} · Central
         </p>
+
+        {event.sponsor && (
+          <p className="modal__sponsor">presented by {event.sponsor}</p>
+        )}
 
         {event.description && (
           <p className="modal__description">{event.description}</p>
@@ -96,7 +106,7 @@ export function EventDetail({
             <ul className="modal__list">
               {event.locations.map((location) => (
                 <li key={`${location.latitude},${location.longitude}`}>
-                  📍{" "}
+                  <Icon name="pin" size={14} />
                   <a
                     href={`https://maps.google.com/?q=${location.latitude},${location.longitude}`}
                     target="_blank"
@@ -115,7 +125,10 @@ export function EventDetail({
             <h3>On the menu</h3>
             <ul className="modal__list">
               {event.menu.map((item) => (
-                <li key={item}>🍽️ {item}</li>
+                <li key={item}>
+                  <Icon name="bowl" size={14} />
+                  {item}
+                </li>
               ))}
             </ul>
           </section>
@@ -139,7 +152,8 @@ export function EventDetail({
             className={`button ${isFavorite ? "button--ghost" : ""}`}
             onClick={() => onToggleFavorite(event.eventId)}
           >
-            {isFavorite ? "★ In my schedule" : "☆ Add to my schedule"}
+            <Icon name="star" size={15} filled={isFavorite} />
+            {isFavorite ? "In my schedule" : "Add to my schedule"}
           </button>
           <a
             className="button button--ghost"
@@ -147,7 +161,8 @@ export function EventDetail({
             target="_blank"
             rel="noreferrer"
           >
-            Add to Google Calendar
+            <Icon name="calendar" size={15} />
+            Google Calendar
           </a>
         </footer>
       </div>

@@ -1,37 +1,40 @@
-import { useEffect, useMemo, useState } from "react";
-import type { HackEvent } from "./api/events";
-import { DayTabs } from "./components/DayTabs";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { EmptyState, ErrorState, ScheduleSkeleton } from "./components/Feedback";
 import { EventCard } from "./components/EventCard";
 import { EventDetail } from "./components/EventDetail";
-import { FilterBar } from "./components/FilterBar";
 import { Header } from "./components/Header";
+import { Icon } from "./components/Icon";
 import { OceanBackground } from "./components/OceanBackground";
+import { Rail } from "./components/Rail";
 import { useAmbient } from "./hooks/useAmbient";
+import { useEventDialog } from "./hooks/useEventDialog";
 import { useEvents } from "./hooks/useEvents";
 import { useFavorites } from "./hooks/useFavorites";
 import { useNow } from "./hooks/useNow";
 import { useReveal } from "./hooks/useReveal";
+import { useShortcuts } from "./hooks/useShortcuts";
 import {
+  buildAgenda,
+  countByType,
   EMPTY_FILTERS,
   filterEvents,
   findLiveEvents,
   findNextEvent,
   getDays,
-  groupByTimeSlot,
   type ScheduleFilters,
 } from "./lib/schedule";
-import { dayKey } from "./lib/time";
+import { dayKey, formatDuration, formatTime } from "./lib/time";
 
 export default function App() {
   const { events, status, error, updatedAt, source, refresh } = useEvents();
   const { favorites, toggleFavorite } = useFavorites();
+  const { selectedEvent, morphId, open, close } = useEventDialog();
   const now = useNow();
   useAmbient();
 
   const [filters, setFilters] = useState<ScheduleFilters>(EMPTY_FILTERS);
   const [activeDay, setActiveDay] = useState<string>("");
-  const [selectedEvent, setSelectedEvent] = useState<HackEvent | null>(null);
+  const searchRef = useRef<HTMLInputElement>(null);
 
   const days = useMemo(() => getDays(events), [events]);
 
@@ -52,14 +55,55 @@ export default function App() {
     [visibleEvents, activeDay]
   );
 
-  const slots = useMemo(() => groupByTimeSlot(dayEvents), [dayEvents]);
+  // Rows = time slots + the breaks between them + the reader's position.
+  const agenda = useMemo(
+    () => buildAgenda(dayEvents, now, activeDay === dayKey(now)),
+    [dayEvents, now, activeDay]
+  );
 
-  // Re-arm the scroll-reveal animation whenever the visible list changes.
-  useReveal([slots, status]);
+  const typeCounts = useMemo(
+    () => countByType(events.filter((e) => dayKey(e.startTime) === activeDay), filters, favorites),
+    [events, activeDay, filters, favorites]
+  );
+
+  const proCount = useMemo(
+    () => events.filter((event) => event.isPro).length,
+    [events]
+  );
+
+  const roomCount = useMemo(
+    () =>
+      new Set(
+        events.flatMap((event) =>
+          event.locations.map((location) => location.description.trim())
+        )
+      ).size,
+    [events]
+  );
 
   // The banner always reflects the real schedule, never the current filters.
   const liveEvents = useMemo(() => findLiveEvents(events, now), [events, now]);
   const nextEvent = useMemo(() => findNextEvent(events, now), [events, now]);
+
+  // Re-arm the scroll-reveal animation whenever the visible list changes.
+  useReveal([agenda, status]);
+
+  const stepDay = useCallback(
+    (direction: -1 | 1) => {
+      const index = days.findIndex((day) => day.key === activeDay);
+      const next = days[index + direction];
+      if (next) setActiveDay(next.key);
+    },
+    [days, activeDay]
+  );
+
+  useShortcuts({
+    onSearch: () => searchRef.current?.focus(),
+    onPrevDay: () => stepDay(-1),
+    onNextDay: () => stepDay(1),
+    onClear: () => setFilters(EMPTY_FILTERS),
+    enabled: !selectedEvent,
+  });
 
   return (
     <div className="app">
@@ -71,66 +115,109 @@ export default function App() {
         nextEvent={nextEvent}
         totalEvents={events.length}
         dayCount={days.length}
+        roomCount={roomCount}
         updatedAt={updatedAt}
         source={source}
         onRefresh={refresh}
-        onSelectEvent={setSelectedEvent}
+        onSelectEvent={open}
       />
 
       <main className="content" id="schedule">
         {status === "loading" && <ScheduleSkeleton />}
 
-        {status === "error" && <ErrorState message={error ?? "Unknown error"} onRetry={refresh} />}
+        {status === "error" && (
+          <ErrorState message={error ?? "Unknown error"} onRetry={refresh} />
+        )}
 
         {status === "ready" && (
-          <>
-            <div className="controls">
-              <DayTabs days={days} activeKey={activeDay} onSelect={setActiveDay} />
-              <FilterBar
-                filters={filters}
-                onChange={setFilters}
-                favoriteCount={favorites.size}
-                resultCount={visibleEvents.length}
-              />
-            </div>
+          <div className="workspace">
+            <Rail
+              ref={searchRef}
+              days={days}
+              activeDay={activeDay}
+              onSelectDay={setActiveDay}
+              filters={filters}
+              onChangeFilters={setFilters}
+              typeCounts={typeCounts}
+              favoriteCount={favorites.size}
+              proCount={proCount}
+              dayCount={dayEvents.length}
+              totalCount={visibleEvents.length}
+            />
 
-            {slots.length === 0 ? (
-              <EmptyState message="No events match your filters on this day. Try clearing a filter or checking another day." />
-            ) : (
-              <ol className="timeline">
-                {slots.map((slot) => (
-                  <li key={slot.key} className="timeline__slot">
-                    <div className="timeline__time" data-reveal>
-                      <span className="timeline__node" aria-hidden="true" />
-                      <span className="timeline__label">{slot.label}</span>
-                    </div>
-                    <div className="timeline__events">
-                      {slot.events.map((event, eventIndex) => (
-                        <EventCard
-                          key={event.eventId}
-                          event={event}
-                          index={eventIndex}
-                          now={now}
-                          isFavorite={favorites.has(event.eventId)}
-                          onToggleFavorite={toggleFavorite}
-                          onSelect={setSelectedEvent}
-                        />
-                      ))}
-                    </div>
-                  </li>
-                ))}
-              </ol>
-            )}
-          </>
+            <section className="schedule" aria-label="Events">
+              {agenda.length === 0 ? (
+                <EmptyState message="No events match these filters on this day. Try another day, or reset the filters." />
+              ) : (
+                <ol className="timeline">
+                  {agenda.map((row) => {
+                    if (row.kind === "gap") {
+                      return (
+                        <li key={row.key} className="gap" data-reveal>
+                          <span className="gap__rule" aria-hidden="true" />
+                          <span className="gap__label">
+                            {formatDuration(0, row.minutes * 60)} break
+                          </span>
+                        </li>
+                      );
+                    }
+
+                    if (row.kind === "now") {
+                      return (
+                        <li key={row.key} className="nowline">
+                          <span className="nowline__dot" aria-hidden="true" />
+                          <span className="nowline__label">
+                            You are here · {formatTime(now)}
+                          </span>
+                        </li>
+                      );
+                    }
+
+                    return (
+                      <li key={row.key} className="slot">
+                        <div className="slot__time" data-reveal>
+                          <span className="slot__node" aria-hidden="true" />
+                          <span className="slot__label">{row.label}</span>
+                        </div>
+                        <div className="slot__events">
+                          {row.events.map((event, index) => (
+                            <EventCard
+                              key={event.eventId}
+                              event={event}
+                              index={index}
+                              now={now}
+                              isFavorite={favorites.has(event.eventId)}
+                              isMorphing={morphId === event.eventId && !selectedEvent}
+                              onToggleFavorite={toggleFavorite}
+                              onSelect={open}
+                            />
+                          ))}
+                        </div>
+                      </li>
+                    );
+                  })}
+                </ol>
+              )}
+            </section>
+          </div>
         )}
       </main>
 
       <footer className="footer">
         <p>
-          Built for the HackIllinois 2027 Systems Coding Challenge · data from{" "}
-          <a href="https://adonix.hackillinois.org/event/" target="_blank" rel="noreferrer">
+          <Icon name="compass" size={14} /> Built for the HackIllinois 2027 Systems
+          Coding Challenge · data from{" "}
+          <a
+            href="https://adonix.hackillinois.org/event/"
+            target="_blank"
+            rel="noreferrer"
+          >
             the public event API
           </a>
+        </p>
+        <p className="footer__keys">
+          <kbd>/</kbd> search <kbd>←</kbd> <kbd>→</kbd> change day <kbd>Esc</kbd>{" "}
+          reset
         </p>
       </footer>
 
@@ -139,7 +226,7 @@ export default function App() {
           event={selectedEvent}
           isFavorite={favorites.has(selectedEvent.eventId)}
           onToggleFavorite={toggleFavorite}
-          onClose={() => setSelectedEvent(null)}
+          onClose={close}
         />
       )}
     </div>

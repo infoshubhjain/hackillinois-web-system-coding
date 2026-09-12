@@ -37,16 +37,17 @@ hits the real API live.**
 
 | Feature | Why it's here |
 | --- | --- |
-| **Day tabs** (Fri / Sat / Sun) | 41 events across three days is unreadable as one list. Tabs default to *today* if the hackathon is running, otherwise to day one. |
-| **Timeline layout** | Events are grouped by start time, so the page reads as "9:00 AM → these three things" instead of a flat feed. |
-| **"Happening now" / "Up next" banner** | The question most attendees actually open a schedule to answer. Updates every 30s, always reflects the real schedule (never the active filters). |
-| **Live progress bar** | In-progress events show how much time is left at a glance. |
-| **Search** | Matches title, description, room and sponsor — so "Siebel 1404" or "Caterpillar" both work. |
-| **Type / Pro / starred filters** | Chips combine with AND across categories, OR within the type list. |
+| **Editorial control rail** | Search, days and type filters live in one persistent sidebar. Every filter shows a live count of exactly what clicking it returns, and a filter that would return nothing is disabled rather than silently emptying the page. |
+| **Timeline with real gaps** | Events are grouped by start time, and the empty stretches between them are drawn as explicit "3h break" rows. A list that hides its gaps makes a 10-minute turnaround and an overnight break look identical. |
+| **"You are here" marker** | When the active day is today, a live marker is inserted at the reader's exact position in the schedule — and never on a day they aren't in. |
+| **Duration to scale** | Each card draws a bar proportional to its length, so a 30-minute talk and a 3-hour expo are distinguishable before you read a word. Zero-length deadlines get no bar and no "0m". |
+| **Happening now / up next** | The question people actually open a schedule to answer, updated every 30s and always reflecting the real schedule rather than the active filters. |
+| **Card → dialog morph** | Clicking a card runs a View Transition: the card's own pixels expand into the detail dialog. Browsers without the API get a CSS entrance instead. |
+| **Keyboard layer** | `/` focuses search, `←`/`→` change day, `Esc` resets — ignored while typing in a field. |
 | **★ My schedule** | Starred events persist in `localStorage`, giving a personal agenda with no login (auth was out of scope). |
-| **Event detail dialog** | Full description, clickable map coordinates, the official floor-map image, meal menus, and an *Add to Google Calendar* link. |
-| **Resilient data layer** | Skeleton loaders, an error state with retry, silent refresh every 5 minutes, and a manual refresh with a "last updated" stamp. Background refreshes keep the old data on screen instead of flashing a spinner. |
-| **Accessibility** | Real buttons everywhere, `aria-pressed` on toggles, `aria-live` result count, Escape-to-close + focus management in the dialog, visible focus rings, and `prefers-reduced-motion` support. |
+| **Detail dialog** | Full description, clickable map coordinates, the official floor-map image, meal menus, sponsor, and an *Add to Google Calendar* link. |
+| **Resilient data layer** | Skeletons, an error state with retry, silent refresh every 5 minutes, manual refresh with a "last updated" stamp. Background refreshes keep old data on screen instead of flashing a spinner. |
+| **Accessibility** | Real buttons everywhere, `aria-pressed` toggles, `aria-live` counts, Escape-to-close and focus management in the dialog, visible focus rings, and a full `prefers-reduced-motion` path. |
 
 ## Project structure
 
@@ -55,22 +56,26 @@ src/
   api/events.ts          fetch + normalize the event service response
   hooks/
     useEvents.ts         loading/error/refresh state machine + polling
+    useEventDialog.ts    dialog state + the card→dialog View Transition
     useFavorites.ts      starred events, persisted to localStorage
     useNow.ts            ticking clock that drives live badges
+    useAmbient.ts        scroll/pointer values for the scene (rAF, no re-render)
+    useReveal.ts         shared IntersectionObserver for scroll reveals
+    useShortcuts.ts      keyboard layer
   lib/
-    schedule.ts          day tabs, filtering, time-slot grouping  (pure)
+    schedule.ts          days, filtering, slots, gaps, now-marker, counts (pure)
     time.ts              Central-Time formatting, status, countdowns (pure)
-    eventMeta.ts         per-type label + emoji
-  components/            Header, DayTabs, FilterBar, EventCard,
-                         EventDetail, Feedback, OceanBackground
+    eventMeta.ts         per-type label + icon
+  components/            Header, Rail, EventCard, EventDetail, Icon,
+                         Feedback, OceanBackground
   styles/                theme.css (tokens + ocean backdrop), app.css
   App.tsx                composes state → derived data → UI
 ```
 
 ## The look
 
-The page is styled as a descent, not a list. Everything below is CSS + inline SVG
-noise — no WebGL, no animation library, no image assets, ~5 kB gzipped of styles.
+Styled as a descent, not a list. No WebGL, no animation library, no image assets —
+the entire visual system is ~6 kB gzipped of CSS.
 
 - **Layered scene** (`OceanBackground`): water-column gradient, cursor-tracked dive
   light, soft-light **caustics** from an SVG `feTurbulence` texture, screen-blended
@@ -78,19 +83,23 @@ noise — no WebGL, no animation library, no image assets, ~5 kB gzipped of styl
   depth of field on the cheap), **vignette**, and an animated **film grain** overlay.
 - **Scroll-driven grade**: `useAmbient` writes `--scroll` and `--pointer-x/y` to the
   root inside a `requestAnimationFrame`, so the water darkens with depth and the hero
-  parallaxes/fades — all in CSS, zero React re-renders per frame.
-- **Kinetic headline**: each word rises out of its own overflow mask on a staggered
-  delay; the accent word is an italic gradient with a light-through-water glow.
-- **Reveal on scroll**: one shared `IntersectionObserver` (`useReveal`) fades, lifts
-  and un-blurs cards with a per-index stagger, then unobserves them.
-- **Cards as glass**: backdrop blur, a type-coloured accent rail and glow, plus a
-  cursor-tracked glare and a 3.5° tilt written as CSS variables on pointer move.
-- **Typography**: Instrument Serif for display, Inter for UI; tabular numerals on every
-  time so the timeline column doesn't shimmer as it updates.
-- **One easing curve** (`--ease`) and one reveal animation across the whole page, so the
-  motion feels authored rather than assembled.
-- All of it collapses gracefully under `prefers-reduced-motion` — grain and particles are
-  removed, and revealed content is forced visible so nothing can get stuck hidden.
+  parallaxes — in CSS, with zero React re-renders per frame.
+- **Custom icon set** (`Icon.tsx`), not emoji: emoji render differently on every OS,
+  ignore `currentColor` and won't sit on a baseline. ~1 kB of inline SVG on a single
+  stroke weight keeps the whole UI in one visual language.
+- **Typography**: Instrument Serif for display and numerals, Inter for UI; one italic
+  accent line instead of a gradient; tabular numerals everywhere a time appears so the
+  timeline column doesn't shimmer as it updates.
+- **Kinetic headline**: each word rises out of its own overflow mask on a stagger, with
+  the glow layered *behind* the type (a drop-shadow would be clipped by the mask).
+- **Reveal on scroll**: one shared `IntersectionObserver` (`useReveal`) fades, lifts and
+  un-blurs rows with a per-index stagger, then unobserves them.
+- **Cards as glass**: backdrop blur, a type-coloured accent rail, and a cursor-tracked
+  glare plus 3° tilt written as CSS variables on pointer move — never through React state.
+- **One easing curve** (`--ease`) and one reveal animation across the page, so the motion
+  reads as authored rather than assembled.
+- Under `prefers-reduced-motion` the grain and particles are removed, transitions are
+  cut, the view transition is skipped, and revealed content is forced visible.
 
 ### Design notes
 
@@ -113,15 +122,18 @@ noise — no WebGL, no animation library, no image assets, ~5 kB gzipped of styl
 npm test
 ```
 
-Covers day bucketing (including the late-night timezone edge case), filter combination
-logic, time-slot grouping, live/upcoming classification, duration + countdown
-formatting, and the API client's sorting, normalization and error paths.
+21 tests covering day bucketing (including the late-night timezone edge case), filter
+combination logic, time-slot grouping, break-row thresholds, the now-marker's
+"only if the reader is actually in this day" rule, filter counts, live/upcoming
+classification, duration + countdown formatting, and the API client's sorting,
+normalization, fallback and error paths.
 
 ## Tech + sources
 
 - React 19, TypeScript, Vite, Vitest
 - Data: `GET https://adonix.hackillinois.org/event/` ([API docs](https://api.docs.hackillinois.org/))
 - `Intl.DateTimeFormat` time-zone formatting — [MDN](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Intl/DateTimeFormat)
+- View Transitions API for the card→dialog morph — [MDN](https://developer.mozilla.org/en-US/docs/Web/API/View_Transition_API)
 - Google Calendar template URL parameters — [documented format](https://developers.google.com/calendar)
 - AI assistance (Claude) was used to speed up CSS scaffolding and boilerplate; all
   architecture, data modeling and logic decisions are my own and I'm happy to walk

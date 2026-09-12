@@ -101,6 +101,80 @@ export function groupByTimeSlot(events: HackEvent[]): TimeSlot[] {
   return [...slots.values()].sort((a, b) => Number(a.key) - Number(b.key));
 }
 
+/**
+ * A day is rendered as a sequence of rows, not a flat list: time slots,
+ * the empty stretches between them, and the reader's current position.
+ * Making the gaps explicit is the difference between a timeline and a list —
+ * a 10-minute turnaround and a 6-hour overnight break should not look alike.
+ */
+export type AgendaRow =
+  | { kind: "slot"; key: string; label: string; events: HackEvent[] }
+  | { kind: "gap"; key: string; minutes: number }
+  | { kind: "now"; key: string };
+
+/** Shorter breaks are just turnaround time and aren't worth a row. */
+const GAP_THRESHOLD_MINUTES = 45;
+
+export function buildAgenda(
+  events: HackEvent[],
+  nowSeconds: number,
+  showNowMarker: boolean
+): AgendaRow[] {
+  const slots = groupByTimeSlot(events);
+  if (!slots.length) return [];
+
+  const dayStart = Number(slots[0].key);
+  const dayEnd = Math.max(...events.map((event) => event.endTime));
+  // Only mark "now" when the reader is actually inside this day's span.
+  let nowPending =
+    showNowMarker && nowSeconds >= dayStart && nowSeconds <= dayEnd;
+
+  const rows: AgendaRow[] = [];
+  let previousEnd = 0;
+
+  for (const slot of slots) {
+    const start = Number(slot.key);
+
+    if (previousEnd) {
+      const gapMinutes = Math.round((start - previousEnd) / 60);
+      if (gapMinutes >= GAP_THRESHOLD_MINUTES) {
+        rows.push({ kind: "gap", key: `gap-${slot.key}`, minutes: gapMinutes });
+      }
+    }
+
+    // The marker goes immediately before the first slot still in the future.
+    if (nowPending && start > nowSeconds) {
+      rows.push({ kind: "now", key: `now-${slot.key}` });
+      nowPending = false;
+    }
+
+    rows.push({ kind: "slot", ...slot });
+    previousEnd = Math.max(previousEnd, ...slot.events.map((e) => e.endTime));
+  }
+
+  return rows;
+}
+
+/**
+ * How many events each type would yield under the *other* active filters.
+ * Counting this way keeps the number next to a chip honest: it is exactly what
+ * you get if you click it.
+ */
+export function countByType(
+  events: HackEvent[],
+  filters: ScheduleFilters,
+  favorites: Set<string>
+): Record<EventType, number> {
+  const base = filterEvents(events, { ...filters, types: [] }, favorites);
+  const counts = {} as Record<EventType, number>;
+
+  for (const event of base) {
+    counts[event.eventType] = (counts[event.eventType] ?? 0) + 1;
+  }
+
+  return counts;
+}
+
 /** The next event that has not started yet, for the "up next" banner. */
 export function findNextEvent(events: HackEvent[], nowSeconds: number) {
   return events.find((event) => event.startTime > nowSeconds);

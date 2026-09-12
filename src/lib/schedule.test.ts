@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import type { HackEvent } from "../api/events";
 import {
+  buildAgenda,
+  countByType,
   EMPTY_FILTERS,
   filterEvents,
   findLiveEvents,
@@ -107,6 +109,91 @@ describe("groupByTimeSlot", () => {
     expect(slots).toHaveLength(2);
     expect(slots[0].events.map((e) => e.eventId)).toEqual(["a", "b"]);
     expect(slots[0].label).toBe("9:00 AM");
+  });
+});
+
+describe("buildAgenda", () => {
+  const opening = makeEvent({ eventId: "opening" });
+  // Starts 3 hours after the opening ends → a real break.
+  const dinner = makeEvent({
+    eventId: "dinner",
+    startTime: FRIDAY_9AM + 4 * HOUR,
+    endTime: FRIDAY_9AM + 5 * HOUR,
+  });
+  // Starts 15 minutes after dinner → just turnaround, no gap row.
+  const talk = makeEvent({
+    eventId: "talk",
+    startTime: FRIDAY_9AM + 5.25 * HOUR,
+    endTime: FRIDAY_9AM + 6 * HOUR,
+  });
+
+  it("inserts a break row only for gaps worth showing", () => {
+    const rows = buildAgenda([opening, dinner, talk], 0, false);
+
+    expect(rows.map((row) => row.kind)).toEqual(["slot", "gap", "slot", "slot"]);
+    const gap = rows[1];
+    expect(gap.kind === "gap" && gap.minutes).toBe(180);
+  });
+
+  it("marks the reader's position before the next future slot", () => {
+    // 30 minutes into the break: "now" belongs just before dinner.
+    const rows = buildAgenda(
+      [opening, dinner, talk],
+      FRIDAY_9AM + 1.5 * HOUR,
+      true
+    );
+
+    expect(rows.map((row) => row.kind)).toEqual([
+      "slot",
+      "gap",
+      "now",
+      "slot",
+      "slot",
+    ]);
+  });
+
+  it("never claims 'now' on a day the reader is not in", () => {
+    // Same timestamp, but this is not today's tab.
+    expect(
+      buildAgenda([opening, dinner], FRIDAY_9AM + 1.5 * HOUR, false).some(
+        (row) => row.kind === "now"
+      )
+    ).toBe(false);
+
+    // Today's tab, but the day is already over.
+    expect(
+      buildAgenda([opening, dinner], FRIDAY_9AM + 50 * HOUR, true).some(
+        (row) => row.kind === "now"
+      )
+    ).toBe(false);
+  });
+
+  it("returns nothing for an empty day", () => {
+    expect(buildAgenda([], FRIDAY_9AM, true)).toEqual([]);
+  });
+});
+
+describe("countByType", () => {
+  const events = [
+    makeEvent({ eventId: "a", eventType: "MEAL" }),
+    makeEvent({ eventId: "b", eventType: "MEAL", isPro: true }),
+    makeEvent({ eventId: "c", eventType: "WORKSHOP" }),
+  ];
+
+  it("counts what each chip would actually return", () => {
+    expect(countByType(events, EMPTY_FILTERS, new Set())).toEqual({
+      MEAL: 2,
+      WORKSHOP: 1,
+    });
+  });
+
+  it("respects the other active filters but ignores the type filter itself", () => {
+    const counts = countByType(
+      events,
+      { ...EMPTY_FILTERS, onlyPro: true, types: ["WORKSHOP"] },
+      new Set()
+    );
+    expect(counts).toEqual({ MEAL: 1 });
   });
 });
 

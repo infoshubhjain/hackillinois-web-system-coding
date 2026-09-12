@@ -1,5 +1,6 @@
 import type { HackEvent } from "../api/events";
 import { formatCountdown, formatTime } from "../lib/time";
+import { Icon } from "./Icon";
 
 interface HeaderProps {
   now: number;
@@ -7,6 +8,7 @@ interface HeaderProps {
   nextEvent?: HackEvent;
   totalEvents: number;
   dayCount: number;
+  roomCount: number;
   updatedAt: number | null;
   source: "live" | "snapshot";
   onRefresh: () => void;
@@ -14,51 +16,69 @@ interface HeaderProps {
 }
 
 /** Headline words animate in one at a time, each from behind its own mask. */
-const TITLE = ["Dive", "into", "the"];
+const LINE_ONE = ["The", "schedule,"];
+const LINE_TWO = ["end", "to", "end."];
 
-/**
- * Cinematic hero. Full-viewport framing, kinetic headline, a live "right now /
- * up next" strip, and a scroll cue — the whole thing parallaxes and fades as
- * the reader descends (driven by the `--scroll` variable from `useAmbient`).
- */
 export function Header({
   now,
   liveEvents,
   nextEvent,
   totalEvents,
   dayCount,
+  roomCount,
   updatedAt,
   source,
   onRefresh,
   onSelectEvent,
 }: HeaderProps) {
+  let delay = 0;
+  const nextDelay = () => `${(delay += 0.08) + 0.1}s`;
+
   return (
     <header className="hero">
       <div className="hero__inner">
         <p className="label hero__eyebrow">
           <span className="hero__rule" aria-hidden="true" />
-          HackIllinois 2026 · Schedule
+          HackIllinois 2026 · Siebel Center
         </p>
 
         <h1 className="hero__title">
-          {TITLE.map((word, index) => (
-            <span className="hero__word" key={word}>
-              <span style={{ animationDelay: `${0.15 + index * 0.09}s` }}>
-                {word}
+          <span className="hero__line">
+            {LINE_ONE.map((word) => (
+              <span className="hero__word" key={word}>
+                <span style={{ animationDelay: nextDelay() }}>{word}</span>
               </span>
-            </span>
-          ))}
-          <span className="hero__word hero__word--accent">
-            <span style={{ animationDelay: `${0.15 + TITLE.length * 0.09}s` }}>
-              Schedule
-            </span>
+            ))}
+          </span>
+          <span className="hero__line hero__line--accent">
+            {LINE_TWO.map((word) => (
+              <span className="hero__word" key={word}>
+                <span style={{ animationDelay: nextDelay() }}>{word}</span>
+              </span>
+            ))}
           </span>
         </h1>
 
         <p className="hero__subtitle">
-          {totalEvents} events across {dayCount} days — talks, workshops, meals and
-          mini-events, charted live from the HackIllinois API. All times Central.
+          Every talk, workshop, meal and mini-event, read live from the
+          HackIllinois event API. All times Central.
         </p>
+
+        {/* Three facts about the weekend, not marketing copy. */}
+        <dl className="stats">
+          <div>
+            <dt>Events</dt>
+            <dd>{totalEvents}</dd>
+          </div>
+          <div>
+            <dt>Days</dt>
+            <dd>{dayCount}</dd>
+          </div>
+          <div>
+            <dt>Rooms</dt>
+            <dd>{roomCount}</dd>
+          </div>
+        </dl>
 
         <div className="hero__status">
           {liveEvents.length > 0 && (
@@ -96,14 +116,14 @@ export function Header({
           {/* Nothing live and nothing left: the event is over (or unannounced). */}
           {liveEvents.length === 0 && !nextEvent && (
             <p className="hero__resting">
-              No sessions in progress — you&apos;re browsing the full archive.
+              Nothing in progress — you&apos;re browsing the full archive.
             </p>
           )}
         </div>
 
         <div className="hero__meta">
           <button type="button" className="linkbutton" onClick={onRefresh}>
-            <span aria-hidden="true">⟳</span> Refresh
+            <Icon name="refresh" size={13} /> Refresh
           </button>
           {updatedAt && (
             <span className="hero__updated">
@@ -112,7 +132,7 @@ export function Header({
                 <>
                   {" · "}
                   <span title="The event API only allows browser requests from localhost and hackillinois.org, so this deployment reads a snapshot refreshed daily by CI.">
-                    cached snapshot ⓘ
+                    cached snapshot
                   </span>
                 </>
               )}
@@ -121,8 +141,8 @@ export function Header({
         </div>
 
         <a className="hero__cue" href="#schedule">
-          <span className="label">Descend</span>
-          <span className="hero__cue-line" aria-hidden="true" />
+          <span className="label">Browse</span>
+          <Icon name="arrowDown" size={16} className="hero__cue-icon" />
         </a>
       </div>
 
