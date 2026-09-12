@@ -1,0 +1,121 @@
+/* Design tokens + the animated ocean backdrop. */
+
+:root {
+  --abyss: #02111e;
+  --deep: #062a45;
+  --mid: #0b3e63;
+  --shallow: #0f5f87;
+  --teal: #2ee6d6;
+  --foam: #eafcff;
+  --coral: #ff8f6b;
+  --sand: #ffd28a;
+  --jelly: #b98bff;
+
+  --text: var(--foam);
+  --text-muted: #9fc4d8;
+  --surface: rgba(9, 42, 68, 0.72);
+  --surface-strong: rgba(6, 30, 50, 0.94);
+  --border: rgba(46, 230, 214, 0.22);
+  --radius: 16px;
+  --shadow: 0 18px 40px rgba(0, 12, 24, 0.45);
+
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  color: var(--text);
+  font-family: "Avenir Next", "Segoe UI", system-ui, -apple-system, sans-serif;
+  background: linear-gradient(180deg, var(--shallow) 0%, var(--mid) 26%, var(--deep) 58%, var(--abyss) 100%);
+  background-attachment: fixed;
+  line-height: 1.5;
+}
+
+/* ---------- Ocean backdrop ---------- */
+
+.ocean {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Sunlight filtering down from the surface. */
+.ocean__rays {
+  position: absolute;
+  inset: -20% -10% 40%;
+  background: repeating-linear-gradient(
+    104deg,
+    rgba(255, 255, 255, 0.07) 0 2%,
+    transparent 2% 9%
+  );
+  filter: blur(6px);
+  animation: sway 16s ease-in-out infinite alternate;
+}
+
+.bubble {
+  position: absolute;
+  bottom: -80px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.8), rgba(160, 230, 255, 0.12));
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  animation-name: rise;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+}
+
+@keyframes rise {
+  from {
+    transform: translate3d(0, 0, 0) scale(0.7);
+    opacity: 0;
+  }
+  10% {
+    opacity: 0.75;
+  }
+  to {
+    transform: translate3d(var(--drift, 0), -110vh, 0) scale(1.1);
+    opacity: 0;
+  }
+}
+
+@keyframes sway {
+  from {
+    transform: translateX(-3%) skewX(-2deg);
+  }
+  to {
+    transform: translateX(3%) skewX(2deg);
+  }
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.35;
+    transform: scale(1.5);
+  }
+}
+
+/* Respect users who ask the OS to cut down on motion. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}
