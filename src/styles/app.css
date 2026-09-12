@@ -78,11 +78,27 @@
   flex-wrap: wrap;
   justify-content: center;
   column-gap: 0.22em;
+  position: relative;
   font-size: clamp(3.2rem, 11vw, 7.5rem);
   line-height: 0.95;
 }
 
 /* Each word sits in its own overflow-hidden mask and rises into frame. */
+/* Light-through-water glow. It sits behind the headline rather than on the
+   accent word, because the word's reveal mask would clip a drop-shadow. */
+.hero__title::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 55%;
+  width: 60%;
+  height: 45%;
+  transform: translate(-50%, -50%);
+  background: radial-gradient(closest-side, rgba(63, 232, 216, 0.3), transparent);
+  filter: blur(46px);
+  pointer-events: none;
+}
+
 .hero__word {
   display: inline-block;
   overflow: hidden;
@@ -101,8 +117,6 @@
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
-  /* Glow behind the accent word, like light through water. */
-  filter: drop-shadow(0 0 34px rgba(63, 232, 216, 0.35));
 }
 
 .hero__subtitle {
