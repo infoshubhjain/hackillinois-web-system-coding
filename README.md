@@ -43,6 +43,7 @@ hits the real API live.**
 | **Duration to scale** | One bar per card does both jobs: its width is the event's length, its fill is how much has elapsed. A 30-minute talk and a 3-hour expo are distinguishable before you read a word; zero-length deadlines get no bar and no "0m". |
 | **Shape of the day** | A density strip in the rail — one bar per hour, height by event count, the current hour marked. Answers "when is this day busy?" without scrolling the timeline, and every populated hour is a button that jumps there. |
 | **Happening now / up next** | The question people actually open a schedule to answer, updated every 30s and always reflecting the real schedule rather than the active filters. |
+| **Open time finder** | The inverse schedule: open blocks between your starred events, clipped to "now" on today's tab, with a 1h/2h/3h minimum picker. Answers "when can I actually code?" |
 | **Card → dialog morph** | Clicking a card runs a View Transition: the card's own pixels expand into the detail dialog. Switching days cross-dissolves the timeline through the same mechanism, scoped so the two never interfere. Browsers without the API get a CSS entrance instead. |
 | **Keyboard layer** | `/` focuses search, `←`/`→` change day, `Esc` resets — ignored while typing in a field. |
 | **★ My schedule** | Starred events persist in `localStorage`, giving a personal agenda with no login (auth was out of scope). |

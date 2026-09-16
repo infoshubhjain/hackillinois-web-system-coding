@@ -5,6 +5,7 @@ import {
   countByType,
   EMPTY_FILTERS,
   filterEvents,
+  findFreeBlocks,
   findLiveEvents,
   findNextEvent,
   getDayShape,
@@ -252,8 +253,85 @@ describe("live / upcoming helpers", () => {
   });
 });
 
-describe("formatting", () => {
-  it("formats durations and countdowns for humans", () => {
+describe("findFreeBlocks", () => {
+  const dayStart = FRIDAY_9AM;
+  const dayEnd = FRIDAY_9AM + 8 * HOUR;
+
+  it("inverts busy spans into open blocks", () => {
+    const blocks = findFreeBlocks(
+      [
+        makeEvent({ eventId: "a", endTime: FRIDAY_9AM + HOUR }),
+        makeEvent({
+          eventId: "b",
+          startTime: FRIDAY_9AM + 3 * HOUR,
+          endTime: FRIDAY_9AM + 4 * HOUR,
+        }),
+      ],
+      dayStart,
+      dayEnd
+    );
+
+    expect(blocks.map((b) => b.minutes)).toEqual([120, 240]);
+    expect(blocks[0].start).toBe(FRIDAY_9AM + HOUR);
+    expect(blocks[0].end).toBe(FRIDAY_9AM + 3 * HOUR);
+  });
+
+  it("merges overlapping and back-to-back events", () => {
+    const blocks = findFreeBlocks(
+      [
+        makeEvent({ eventId: "a", endTime: FRIDAY_9AM + 2 * HOUR }),
+        makeEvent({
+          eventId: "b",
+          startTime: FRIDAY_9AM + HOUR,
+          endTime: FRIDAY_9AM + 3 * HOUR,
+        }),
+      ],
+      dayStart,
+      dayEnd
+    );
+
+    expect(blocks).toHaveLength(1);
+    expect(blocks[0].start).toBe(FRIDAY_9AM + 3 * HOUR);
+  });
+
+  it("ignores zero-length deadlines and filters short blocks", () => {
+    const blocks = findFreeBlocks(
+      [
+        makeEvent({ eventId: "deadline", endTime: FRIDAY_9AM }),
+        makeEvent({ eventId: "a", endTime: FRIDAY_9AM + HOUR }),
+      ],
+      dayStart,
+      dayEnd,
+      120
+    );
+
+    expect(blocks.map((b) => b.minutes)).toEqual([420]);
+  });
+
+  it("hides elapsed time when clipped to now", () => {
+    const blocks = findFreeBlocks(
+      [makeEvent({ eventId: "a", endTime: FRIDAY_9AM + HOUR })],
+      dayStart,
+      dayEnd,
+      0,
+      FRIDAY_9AM + 2 * HOUR
+    );
+
+    expect(blocks).toHaveLength(1);
+    expect(blocks[0].start).toBe(FRIDAY_9AM + 2 * HOUR);
+  });
+
+  it("returns the whole span when nothing is busy, and nothing when fully booked", () => {
+    expect(findFreeBlocks([], dayStart, dayEnd)).toEqual([
+      { start: dayStart, end: dayEnd, minutes: 480 },
+    ]);
+    expect(
+      findFreeBlocks([makeEvent({ startTime: dayStart, endTime: dayEnd })], dayStart, dayEnd)
+    ).toEqual([]);
+  });
+});
+
+describe("formatting", () => {  it("formats durations and countdowns for humans", () => {
     expect(formatDuration(FRIDAY_9AM, FRIDAY_9AM + 90 * 60)).toBe("1h 30m");
     expect(formatDuration(FRIDAY_9AM, FRIDAY_9AM + 45 * 60)).toBe("45m");
     expect(formatCountdown(FRIDAY_9AM + 30 * 60, FRIDAY_9AM)).toBe("in 30m");

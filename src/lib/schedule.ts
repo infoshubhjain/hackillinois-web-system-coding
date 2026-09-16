@@ -222,3 +222,69 @@ export function findLiveEvents(events: HackEvent[], nowSeconds: number) {
     (event) => event.startTime <= nowSeconds && nowSeconds < event.endTime
   );
 }
+
+export interface FreeBlock {
+  start: number;
+  end: number;
+  minutes: number;
+}
+
+/**
+ * The inverse schedule: open stretches between a set of busy events, clipped
+ * to the day's span. Answers "when can I actually code?" — hackers open a
+ * schedule to find hacking time as much as talks.
+ *
+ * Busy spans are merged first so back-to-back events don't split a block, and
+ * zero-length deadlines never block time. `clipFrom` (usually "now" when the
+ * reader is viewing today) hides time that has already passed.
+ */
+export function findFreeBlocks(
+  busy: HackEvent[],
+  dayStart: number,
+  dayEnd: number,
+  minMinutes = 0,
+  clipFrom = 0
+): FreeBlock[] {
+  const from = Math.max(dayStart, clipFrom);
+  if (from >= dayEnd) return [];
+
+  const spans = busy
+    .map((event) => ({
+      start: Math.max(event.startTime, from),
+      end: Math.min(event.endTime, dayEnd),
+    }))
+    .filter((span) => span.end > span.start)
+    .sort((a, b) => a.start - b.start);
+
+  const merged: { start: number; end: number }[] = [];
+  for (const span of spans) {
+    const last = merged[merged.length - 1];
+    if (last && span.start <= last.end) {
+      last.end = Math.max(last.end, span.end);
+    } else {
+      merged.push({ ...span });
+    }
+  }
+
+  const blocks: FreeBlock[] = [];
+  let cursor = from;
+  for (const span of merged) {
+    if (span.start > cursor) {
+      blocks.push({
+        start: cursor,
+        end: span.start,
+        minutes: Math.round((span.start - cursor) / 60),
+      });
+    }
+    cursor = Math.max(cursor, span.end);
+  }
+  if (cursor < dayEnd) {
+    blocks.push({
+      start: cursor,
+      end: dayEnd,
+      minutes: Math.round((dayEnd - cursor) / 60),
+    });
+  }
+
+  return blocks.filter((block) => block.minutes >= minMinutes);
+}

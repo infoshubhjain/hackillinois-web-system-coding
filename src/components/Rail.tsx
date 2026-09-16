@@ -1,7 +1,13 @@
 import { forwardRef } from "react";
 import { EVENT_TYPES, type EventType } from "../api/events";
 import { EVENT_TYPE_META } from "../lib/eventMeta";
-import type { HourBucket, ScheduleDay, ScheduleFilters } from "../lib/schedule";
+import type {
+  FreeBlock,
+  HourBucket,
+  ScheduleDay,
+  ScheduleFilters,
+} from "../lib/schedule";
+import { formatDuration, formatTimeRange } from "../lib/time";
 import { DayShape } from "./DayShape";
 import { Icon } from "./Icon";
 
@@ -20,6 +26,9 @@ interface RailProps {
   shape: HourBucket[];
   currentHour: number | null;
   onJumpToHour: (slotKey: string) => void;
+  freeBlocks: FreeBlock[];
+  minFreeMinutes: number;
+  onChangeMinFree: (minutes: number) => void;
 }
 
 /**
@@ -44,6 +53,9 @@ export const Rail = forwardRef<HTMLInputElement, RailProps>(function Rail(
     shape,
     currentHour,
     onJumpToHour,
+    freeBlocks,
+    minFreeMinutes,
+    onChangeMinFree,
   },
   searchRef
 ) {
@@ -155,6 +167,46 @@ export const Rail = forwardRef<HTMLInputElement, RailProps>(function Rail(
             <span className="filterrow__count">{proCount}</span>
           </button>
         </div>
+      </section>
+      <section className="rail__group" aria-label="Open hacking time">
+        <h2 className="rail__heading">Open time</h2>
+        {favoriteCount === 0 ? (
+          <p className="rail__note">
+            Star events to map the open blocks where you can actually code.
+          </p>
+        ) : (
+          <>
+            <div className="freeopts" role="group" aria-label="Minimum open block">
+              {[60, 120, 180].map((minutes) => (
+                <button
+                  key={minutes}
+                  type="button"
+                  className={`freeopt ${minFreeMinutes === minutes ? "is-active" : ""}`}
+                  aria-pressed={minFreeMinutes === minutes}
+                  onClick={() => onChangeMinFree(minutes)}
+                >
+                  {minutes / 60}h+
+                </button>
+              ))}
+            </div>
+            {freeBlocks.length === 0 ? (
+              <p className="rail__note">No open blocks that long on this day.</p>
+            ) : (
+              <ul className="freelist">
+                {freeBlocks.map((block) => (
+                  <li key={block.start} className="freeblock">
+                    <span className="freeblock__range">
+                      {formatTimeRange(block.start, block.end)}
+                    </span>
+                    <span className="freeblock__count">
+                      {formatDuration(block.start, block.end)}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </>
+        )}
       </section>
 
       {/* Two numbers, because "19 shown" alone is ambiguous when three days

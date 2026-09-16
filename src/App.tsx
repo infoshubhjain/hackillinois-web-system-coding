@@ -19,6 +19,7 @@ import {
   getDayShape,
   EMPTY_FILTERS,
   filterEvents,
+  findFreeBlocks,
   findLiveEvents,
   findNextEvent,
   getDays,
@@ -36,6 +37,7 @@ export default function App() {
 
   const [filters, setFilters] = useState<ScheduleFilters>(EMPTY_FILTERS);
   const [activeDay, setActiveDay] = useState<string>("");
+  const [minFreeMinutes, setMinFreeMinutes] = useState(60);
   const searchRef = useRef<HTMLInputElement>(null);
 
   /**
@@ -109,6 +111,23 @@ export default function App() {
   const liveEvents = useMemo(() => findLiveEvents(events, now), [events, now]);
   const nextEvent = useMemo(() => findNextEvent(events, now), [events, now]);
 
+  // Open hacking time: the inverse of the reader's starred day. Clipped to
+  // "now" when viewing today so elapsed time never shows as available.
+  const freeBlocks = useMemo(() => {
+    const day = events.filter((e) => dayKey(e.startTime) === activeDay);
+    if (!day.length) return [];
+    const start = Math.min(...day.map((e) => e.startTime));
+    const end = Math.max(...day.map((e) => e.endTime));
+    const starred = day.filter((e) => favorites.has(e.eventId));
+    return findFreeBlocks(
+      starred,
+      start,
+      end,
+      minFreeMinutes,
+      activeDay === dayKey(now) ? now : 0
+    );
+  }, [events, activeDay, favorites, minFreeMinutes, now]);
+
   // Re-arm the scroll-reveal animation whenever the visible list changes.
   useReveal([agenda, status]);
 
@@ -170,6 +189,9 @@ export default function App() {
               shape={shape}
               currentHour={activeDay === dayKey(now) ? getHour(now) : null}
               onJumpToHour={jumpToHour}
+              freeBlocks={freeBlocks}
+              minFreeMinutes={minFreeMinutes}
+              onChangeMinFree={setMinFreeMinutes}
             />
 
             <section className="schedule" aria-label="Events">
