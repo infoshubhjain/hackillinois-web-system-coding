@@ -1,3 +1,5 @@
+// Central-Time formatting plus event status helpers. The API speaks unix
+// seconds; everything here converts that into what a reader sees.
 import type { HackEvent } from "../api/events";
 
 /** All HackIllinois events are scheduled in Central Time, wherever the user is. */

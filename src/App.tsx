@@ -28,6 +28,8 @@ import {
 import { dayKey, formatDuration, formatTime, getHour } from "./lib/time";
 import { withViewTransition } from "./lib/viewTransition";
 
+// Schedule page: day tabs + filter rail around an hour-by-hour timeline,
+// with a live-now banner, an open-time finder, and locally persisted stars.
 export default function App() {
   const { events, status, error, updatedAt, source, refresh } = useEvents();
   const { favorites, toggleFavorite, justStarred } = useFavorites();
@@ -74,23 +76,26 @@ export default function App() {
     [visibleEvents, activeDay]
   );
 
+  // Whole-day events before filtering: the rail overviews the day itself,
+  // not the current query.
+  const activeDayEvents = useMemo(
+    () => events.filter((event) => dayKey(event.startTime) === activeDay),
+    [events, activeDay]
+  );
+  const isToday = activeDay === dayKey(now);
+
   // Rows = time slots + the breaks between them + the reader's position.
   const agenda = useMemo(
-    () => buildAgenda(dayEvents, now, activeDay === dayKey(now)),
-    [dayEvents, now, activeDay]
+    () => buildAgenda(dayEvents, now, isToday),
+    [dayEvents, now, isToday]
   );
 
   const typeCounts = useMemo(
-    () => countByType(events.filter((e) => dayKey(e.startTime) === activeDay), filters, favorites),
-    [events, activeDay, filters, favorites]
+    () => countByType(activeDayEvents, filters, favorites),
+    [activeDayEvents, filters, favorites]
   );
 
-  // The strip in the rail is drawn from the day's real schedule, not the
-  // filtered view: it's an overview of the day, not of the current query.
-  const shape = useMemo(
-    () => getDayShape(events.filter((e) => dayKey(e.startTime) === activeDay)),
-    [events, activeDay]
-  );
+  const shape = useMemo(() => getDayShape(activeDayEvents), [activeDayEvents]);
 
   const proCount = useMemo(
     () => events.filter((event) => event.isPro).length,
@@ -114,19 +119,18 @@ export default function App() {
   // Open hacking time: the inverse of the reader's starred day. Clipped to
   // "now" when viewing today so elapsed time never shows as available.
   const freeBlocks = useMemo(() => {
-    const day = events.filter((e) => dayKey(e.startTime) === activeDay);
-    if (!day.length) return [];
-    const start = Math.min(...day.map((e) => e.startTime));
-    const end = Math.max(...day.map((e) => e.endTime));
-    const starred = day.filter((e) => favorites.has(e.eventId));
+    if (!activeDayEvents.length) return [];
+    const start = Math.min(...activeDayEvents.map((e) => e.startTime));
+    const end = Math.max(...activeDayEvents.map((e) => e.endTime));
+    const starred = activeDayEvents.filter((e) => favorites.has(e.eventId));
     return findFreeBlocks(
       starred,
       start,
       end,
       minFreeMinutes,
-      activeDay === dayKey(now) ? now : 0
+      isToday ? now : 0
     );
-  }, [events, activeDay, favorites, minFreeMinutes, now]);
+  }, [activeDayEvents, favorites, minFreeMinutes, isToday, now]);
 
   // Re-arm the scroll-reveal animation whenever the visible list changes.
   useReveal([agenda, status]);
@@ -187,7 +191,7 @@ export default function App() {
               dayCount={dayEvents.length}
               totalCount={visibleEvents.length}
               shape={shape}
-              currentHour={activeDay === dayKey(now) ? getHour(now) : null}
+              currentHour={isToday ? getHour(now) : null}
               onJumpToHour={jumpToHour}
               freeBlocks={freeBlocks}
               minFreeMinutes={minFreeMinutes}

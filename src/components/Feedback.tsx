@@ -1,3 +1,5 @@
+// Loading / error / empty states for the schedule. One file because all
+// three share the same centered layout and sonar motif.
 import { Icon } from "./Icon";
 
 /** Placeholder rows shown while the first fetch is in flight. */
@@ -11,6 +13,7 @@ export function ScheduleSkeleton({ count = 5 }: { count?: number }) {
   );
 }
 
+/** Fetch failed on every source, with a retry. */
 export function ErrorState({
   message,
   onRetry,
@@ -30,6 +33,7 @@ export function ErrorState({
   );
 }
 
+/** Filters matched nothing on this day. */
 export function EmptyState({ message }: { message: string }) {
   return (
     <div className="empty">

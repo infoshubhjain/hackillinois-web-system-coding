@@ -1413,54 +1413,8 @@ html[data-transition="day"]::view-transition-new(root) {
     grid-column: 1 / -1;
   }
 
-  /* ---------- Shape of the day ---------- */
-
-.shape {
-  display: flex;
-  align-items: flex-end;
-  gap: 2px;
-  height: 54px;
-  padding: 0 1px;
-}
-
-.shape__bar {
-  flex: 1;
-  min-width: 0;
-  height: var(--height, 6%);
-  padding: 0;
-  border: none;
-  border-radius: 2px 2px 0 0;
-  background: color-mix(in srgb, var(--aqua) 32%, transparent);
-  cursor: pointer;
-  transition: background 0.3s var(--ease), height 0.5s var(--ease),
-    transform 0.3s var(--ease);
-}
-
-.shape__bar:hover:not(:disabled) {
-  background: var(--aqua);
-  transform: scaleX(1.6);
-}
-
-.shape__bar:disabled {
-  background: rgba(255, 255, 255, 0.09);
-  cursor: default;
-}
-
-/* The hour the reader is actually in. */
-.shape__bar.is-now {
-  background: var(--coral);
-  box-shadow: 0 0 12px -2px var(--coral);
-}
-
-.shape__axis {
-  display: flex;
-  justify-content: space-between;
-  margin: 0.4rem 0 0;
-  font-size: 0.66rem;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--text-dim);
-}
+  /* Shape-of-the-day bars reuse the base styles above — no overrides needed
+     at this width. */
 
 .rail__summary {
     grid-column: 1 / -1;

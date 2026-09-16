@@ -31,8 +31,8 @@ export function Header({
   onRefresh,
   onSelectEvent,
 }: HeaderProps) {
-  let delay = 0;
-  const nextDelay = () => `${(delay += 0.08) + 0.1}s`;
+  // Stagger each headline word's entrance by its position in the title.
+  const wordDelay = (index: number) => `${0.18 + index * 0.08}s`;
 
   return (
     <header className="hero">
@@ -44,16 +44,16 @@ export function Header({
 
         <h1 className="hero__title">
           <span className="hero__line">
-            {LINE_ONE.map((word) => (
+            {LINE_ONE.map((word, index) => (
               <span className="hero__word" key={word}>
-                <span style={{ animationDelay: nextDelay() }}>{word}</span>
+                <span style={{ animationDelay: wordDelay(index) }}>{word}</span>
               </span>
             ))}
           </span>
           <span className="hero__line hero__line--accent">
-            {LINE_TWO.map((word) => (
+            {LINE_TWO.map((word, index) => (
               <span className="hero__word" key={word}>
-                <span style={{ animationDelay: nextDelay() }}>{word}</span>
+                <span style={{ animationDelay: wordDelay(index + LINE_ONE.length) }}>{word}</span>
               </span>
             ))}
           </span>

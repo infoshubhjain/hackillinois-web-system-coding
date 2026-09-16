@@ -33,7 +33,8 @@ export function useFavorites() {
   const toggle = useCallback((eventId: string) => {
     setIds((prev) => {
       const next = new Set(prev);
-      next.has(eventId) ? next.delete(eventId) : next.add(eventId);
+      if (next.has(eventId)) next.delete(eventId);
+      else next.add(eventId);
       // Celebrate adding, not removing.
       setJustStarred(next.has(eventId) ? eventId : null);
       return next;

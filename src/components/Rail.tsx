@@ -1,12 +1,8 @@
 import { forwardRef } from "react";
 import { EVENT_TYPES, type EventType } from "../api/events";
 import { EVENT_TYPE_META } from "../lib/eventMeta";
-import type {
-  FreeBlock,
-  HourBucket,
-  ScheduleDay,
-  ScheduleFilters,
-} from "../lib/schedule";
+import type { FreeBlock, HourBucket, ScheduleDay, ScheduleFilters } from "../lib/schedule";
+import { EMPTY_FILTERS } from "../lib/schedule";
 import { formatDuration, formatTimeRange } from "../lib/time";
 import { DayShape } from "./DayShape";
 import { Icon } from "./Icon";
@@ -222,14 +218,7 @@ export const Rail = forwardRef<HTMLInputElement, RailProps>(function Rail(
           <button
             type="button"
             className="linkbutton"
-            onClick={() =>
-              onChangeFilters({
-                query: "",
-                types: [],
-                onlyFavorites: false,
-                onlyPro: false,
-              })
-            }
+            onClick={() => onChangeFilters(EMPTY_FILTERS)}
           >
             Reset
           </button>

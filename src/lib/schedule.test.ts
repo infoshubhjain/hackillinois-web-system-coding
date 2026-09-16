@@ -331,7 +331,8 @@ describe("findFreeBlocks", () => {
   });
 });
 
-describe("formatting", () => {  it("formats durations and countdowns for humans", () => {
+describe("formatting", () => {
+  it("formats durations and countdowns for humans", () => {
     expect(formatDuration(FRIDAY_9AM, FRIDAY_9AM + 90 * 60)).toBe("1h 30m");
     expect(formatDuration(FRIDAY_9AM, FRIDAY_9AM + 45 * 60)).toBe("45m");
     expect(formatCountdown(FRIDAY_9AM + 30 * 60, FRIDAY_9AM)).toBe("in 30m");

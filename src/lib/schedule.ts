@@ -1,3 +1,5 @@
+// Schedule logic: day tabs, filtering, timeline rows, day-shape buckets,
+// and the open-time finder. Pure functions over HackEvent — no React.
 import type { EventType, HackEvent } from "../api/events";
 import { dayKey, formatDayDate, formatDayName, formatTime, getHour } from "./time";
 
