@@ -16,8 +16,8 @@ interface HeaderProps {
 }
 
 /** Headline words animate in one at a time, each from behind its own mask. */
-const LINE_ONE = ["The", "schedule,"];
-const LINE_TWO = ["end", "to", "end."];
+const LINE_ONE = ["The", "weekend,"];
+const LINE_TWO = ["hour", "by", "hour."];
 
 export function Header({
   now,
@@ -60,8 +60,8 @@ export function Header({
         </h1>
 
         <p className="hero__subtitle">
-          Every talk, workshop, meal and mini-event, read live from the
-          HackIllinois event API. All times Central.
+          Every talk, workshop, meal and mini-event in one place. All times
+          Central.
         </p>
 
         {/* Three facts about the weekend, not marketing copy. */}
@@ -115,9 +115,7 @@ export function Header({
 
           {/* Nothing live and nothing left: the event is over (or unannounced). */}
           {liveEvents.length === 0 && !nextEvent && (
-            <p className="hero__resting">
-              Nothing in progress — you&apos;re browsing the full archive.
-            </p>
+            <p className="hero__resting">Nothing live right now.</p>
           )}
         </div>
 
